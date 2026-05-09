@@ -1,0 +1,7 @@
+/target
+/target-linux
+/tmp.confg
+*.swp
+*.swo
+.DS_Store
+.claude/settings.local.json

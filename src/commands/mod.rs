@@ -1,0 +1,9 @@
+pub mod auth;
+pub mod config;
+pub mod discover;
+pub mod events;
+pub mod issues;
+pub mod orgs;
+pub mod projects;
+pub mod releases;
+pub mod tail;
