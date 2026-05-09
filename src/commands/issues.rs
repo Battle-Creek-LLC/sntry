@@ -41,6 +41,9 @@ pub struct ListArgs {
     pub limit: usize,
     #[arg(long, default_value_t = 100)]
     pub max: usize,
+    /// Show the original TITLE column instead of WHERE (function/file).
+    #[arg(long)]
+    pub full: bool,
 }
 
 #[derive(Debug, Args)]
@@ -109,19 +112,52 @@ async fn list(
     }
 
     let path = format!("/organizations/{}/issues/", org);
-    let items = client.paginate(&path, &query, args.max).await?;
+    let mut items = client.paginate(&path, &query, args.max).await?;
     if items.is_empty() {
         return print_empty(format);
     }
+    if !args.full {
+        for it in items.iter_mut() {
+            if let Some(obj) = it.as_object_mut() {
+                let metadata = obj.get("metadata");
+                let function = metadata
+                    .and_then(|m| m.get("function"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let filename = metadata
+                    .and_then(|m| m.get("filename"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let culprit = obj.get("culprit").and_then(|v| v.as_str()).unwrap_or("");
+                let where_str = match (function.is_empty(), filename.is_empty()) {
+                    (false, false) => format!("{} ({})", function, filename),
+                    (false, true) => function.to_string(),
+                    (true, false) => filename.to_string(),
+                    (true, true) => culprit.to_string(),
+                };
+                obj.insert("_where".into(), serde_json::Value::String(where_str));
+            }
+        }
+    }
     let value = serde_json::Value::Array(items);
-    let cols = [
-        Column::new("SHORT_ID", &["shortId"]),
-        Column::new("LEVEL", &["level"]),
-        Column::new("COUNT", &["count"]),
-        Column::new("USERS", &["userCount"]),
-        Column::new("TITLE", &["title"]),
-    ];
-    print_value(format, &value, &cols)
+    let cols: &[Column] = if args.full {
+        &[
+            Column::new("SHORT_ID", &["shortId"]),
+            Column::new("LEVEL", &["level"]),
+            Column::new("COUNT", &["count"]),
+            Column::new("USERS", &["userCount"]),
+            Column::new("TITLE", &["title"]),
+        ]
+    } else {
+        &[
+            Column::new("SHORT_ID", &["shortId"]),
+            Column::new("LEVEL", &["level"]),
+            Column::new("COUNT", &["count"]),
+            Column::new("USERS", &["userCount"]),
+            Column::new("WHERE", &["_where"]),
+        ]
+    };
+    print_value(format, &value, cols)
 }
 
 async fn get(id: &str, client: &ApiClient, auth: &Resolved, format: OutputFormat) -> Result<()> {
