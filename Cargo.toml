@@ -1,6 +1,6 @@
 [package]
 name = "bcl-sntry"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "A fast, minimal CLI for investigating Sentry issues, events, and releases"
 license = "MIT"

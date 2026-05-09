@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] — 2026-05-09
+
+### Changed
+
+- `sntry issues list` now renders a `WHERE` column (top-frame
+  `metadata.function` / `metadata.filename`, falling back to `culprit`)
+  in place of `TITLE` for sweep / monitor flows. Pass `--full` to
+  restore the original `TITLE` column. JSON / NDJSON output is
+  unchanged.
+
+### Fixed
+
+- Cross-compilation to Windows. `config.rs` referenced
+  `std::os::unix::fs::PermissionsExt` unconditionally, breaking the
+  `x86_64-pc-windows-msvc` target in CI. The Unix-only file-mode check
+  and `0600`-on-write are now gated with `#[cfg(unix)]` (matching the
+  pattern used by `bcl-sumo`).
+
 ## [0.1.0] — 2026-05-09
 
 ### Added

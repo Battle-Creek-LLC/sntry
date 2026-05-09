@@ -1,8 +1,7 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -40,17 +39,7 @@ pub fn load(path: &Path) -> Result<Config> {
     if !path.exists() {
         return Ok(Config::default());
     }
-    let meta = fs::metadata(path)
-        .with_context(|| format!("Unable to read {}", path.display()))?;
-    let mode = meta.permissions().mode() & 0o777;
-    if mode & 0o077 != 0 {
-        bail!(
-            "Refusing to read {}: file mode {:04o}; run 'chmod 600 {}'",
-            path.display(),
-            mode,
-            path.display()
-        );
-    }
+    check_mode(path)?;
     let s = fs::read_to_string(path)
         .with_context(|| format!("Unable to read {}", path.display()))?;
     let cfg: Config = toml::from_str(&s)
@@ -64,11 +53,40 @@ pub fn save(path: &Path, cfg: &Config) -> Result<()> {
     }
     let s = toml::to_string_pretty(cfg)?;
     fs::write(path, s)?;
-    let mut perms = fs::metadata(path)?.permissions();
-    perms.set_mode(0o600);
-    fs::set_permissions(path, perms)?;
+    restrict_mode(path);
     Ok(())
 }
+
+#[cfg(unix)]
+fn check_mode(path: &Path) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    let meta = fs::metadata(path)
+        .with_context(|| format!("Unable to read {}", path.display()))?;
+    let mode = meta.permissions().mode() & 0o777;
+    if mode & 0o077 != 0 {
+        anyhow::bail!(
+            "Refusing to read {}: file mode {:04o}; run 'chmod 600 {}'",
+            path.display(),
+            mode,
+            path.display()
+        );
+    }
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn check_mode(_path: &Path) -> Result<()> {
+    Ok(())
+}
+
+#[cfg(unix)]
+fn restrict_mode(path: &Path) {
+    use std::os::unix::fs::PermissionsExt;
+    let _ = fs::set_permissions(path, fs::Permissions::from_mode(0o600));
+}
+
+#[cfg(not(unix))]
+fn restrict_mode(_path: &Path) {}
 
 pub fn delete_if_empty(path: &Path, cfg: &Config) -> Result<bool> {
     if cfg.profiles.is_empty() && cfg.default_profile.is_none() && cfg.default_output.is_none() {
