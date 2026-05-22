@@ -66,6 +66,8 @@ enum Command {
     Releases(commands::releases::ReleasesArgs),
     /// Discover events query.
     Discover(commands::discover::DiscoverArgs),
+    /// Trace Metrics (custom application metrics) query.
+    Metrics(commands::metrics::MetricsArgs),
     /// Stream new events matching a query.
     Tail(commands::tail::TailArgs),
 }
@@ -144,6 +146,9 @@ fn real_main() -> Result<()> {
             }
             Command::Discover(args) => {
                 commands::discover::run(args, &client, &resolved, proj, format).await
+            }
+            Command::Metrics(args) => {
+                commands::metrics::run(args, &client, &resolved, proj, format).await
             }
             Command::Tail(args) => {
                 commands::tail::run(args, &client, &resolved, proj, format).await

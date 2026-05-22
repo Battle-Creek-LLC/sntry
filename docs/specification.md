@@ -246,6 +246,7 @@ sntry issues      # list / get / events / update
 sntry events      # get
 sntry releases    # list / get
 sntry discover    # query the Discover events endpoint (full search)
+sntry metrics     # query the Trace Metrics dataset (custom application metrics)
 sntry tail        # poll Discover for new events matching a query
 ```
 
@@ -374,6 +375,59 @@ sntry discover query [OPTIONS] [QUERY]
 $ sntry discover query 'event.type:error level:error' \
     --field 'id,title,project,timestamp,user.id' \
     --from now-1h -o ndjson
+```
+
+### `sntry metrics query`
+
+Wraps `GET /api/0/organizations/{org}/events/` against the **Trace Metrics**
+dataset (`dataset=tracemetrics`) — Sentry's trace-connected Application Metrics,
+emitted from SDKs via `sentry_sdk.metrics.count` / `.gauge` / `.distribution`
+(and the equivalents in other SDKs). This is the same events endpoint Discover
+uses, but the aggregate is expressed as a metrics function over the metric's
+`value` attribute.
+
+```
+sntry metrics query <NAME> [OPTIONS]
+```
+
+| Option            | Default        | Notes                                                                    |
+| ----------------- | -------------- | ------------------------------------------------------------------------ |
+| `NAME`            | (required)     | Metric name, e.g. `http_cache.hit`, `gemini.cost_usd`                    |
+| `--stat`          | `sum`          | `sum` \| `avg` \| `count` \| `count_unique` \| `min` \| `max` \| `p50` \| `p75` \| `p90` \| `p95` \| `p99` |
+| `--type`          | (auto)         | `counter` \| `gauge` \| `distribution`. Auto-detected from the name; pass to override |
+| `--unit`          | (auto)         | Metric unit (`millisecond`, `byte`, `usd`, `none`, …). Auto-detected from the name; pass to override |
+| `--group-by`      | —              | Group results by an attribute (repeatable), e.g. `--group-by org_id`     |
+| `--query`         | —              | Extra attribute filter in Sentry search syntax (e.g. `workflow:checkout`)|
+| `--from`, `-f`    | `now-24h`      | Start time                                                               |
+| `--to`, `-t`      | `now`          | End time                                                                 |
+| `--sort`          | `-<aggregate>` | Sort spec; defaults to the aggregate descending                          |
+| `--limit`, `-n`   | `100`          | Page size                                                                |
+| `--max`           | `1000`         | Pagination ceiling (Link-header pagination not yet wired for this endpoint) |
+| `--environment`   | —              | Filter by environment                                                    |
+| `--dataset`       | `tracemetrics` | Dataset escape hatch (e.g. the legacy `metrics` dataset)                 |
+
+Trace-metric aggregates require the full `(name, type, unit)` triple, so the
+aggregate is sent as a single field of the form `<stat>(value,<name>,<type>,<unit>)`,
+e.g. `sum(value,http_cache.hit,counter,none)`. When `--type` / `--unit` are not
+given, `sntry` resolves them with a lookup query against the same dataset
+(`field=metric.type,metric.unit` filtered by `metric.name`) — the same approach the
+Sentry UI uses to populate its metric picker. Counters report a null unit, which the
+aggregate function expects as the literal `none`.
+
+Each `--group-by` attribute is selected as an additional plain field, which groups
+the aggregate by that attribute (the same mechanism as Discover's
+`--field 'release,count()'`). Output mirrors `discover query`: rows are returned
+under the response's `data` key; `text` output falls back to pretty JSON (column
+headers are dynamic), while `json` / `ndjson` carry the raw rows for scripting.
+
+**Example**
+
+```
+# cache hit ratio inputs, per org, last 24h
+$ sntry metrics query http_cache.hit -f now-24h --stat sum --group-by org_id -o json -q
+
+# gemini spend by workflow, last 7d
+$ sntry metrics query gemini.cost_usd -f now-7d --stat sum --group-by workflow --type distribution -o json -q
 ```
 
 ### `sntry tail`

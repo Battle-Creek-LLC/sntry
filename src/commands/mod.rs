@@ -3,6 +3,7 @@ pub mod config;
 pub mod discover;
 pub mod events;
 pub mod issues;
+pub mod metrics;
 pub mod orgs;
 pub mod projects;
 pub mod releases;

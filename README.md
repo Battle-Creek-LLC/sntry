@@ -18,6 +18,8 @@ incident triage and ad-hoc queries.
 
 - **Issues + events + Discover** — list issues, fetch full event payloads,
   run Discover queries, follow new events with `sntry tail`
+- **Trace Metrics** — query custom counters / gauges / distributions
+  emitted via the Sentry SDK metrics API (`sntry metrics query`)
 - **Multiple output formats** — text, JSON, NDJSON, ASCII table
 - **Config-file auth** — credentials in a TOML file (default
   `~/.config/sntry/config.toml`, mode `0600`)
@@ -105,6 +107,7 @@ sntry issues      # list / get / events / update
 sntry events      # get
 sntry releases    # list / get
 sntry discover    # query
+sntry metrics     # query Trace Metrics (custom application metrics)
 sntry tail        # poll Discover for new events
 ```
 
@@ -128,6 +131,27 @@ sntry issues list 'is:unresolved level:error' -f now-1h -o ndjson -q
 - `-o ndjson` for streaming or large result sets
 - `-o json` for a single JSON document
 - `-q` to suppress progress / status output on stderr
+
+### Trace Metrics
+
+Query custom application metrics (counters, gauges, distributions) emitted via
+the Sentry SDK metrics API. The positional argument is the metric name; `--stat`
+picks the aggregation and `--group-by` rolls up by an attribute:
+
+```bash
+# cache hits per org over the last 24h
+sntry metrics query http_cache.hit -f now-24h --stat sum --group-by org_id -o json -q
+
+# gemini spend by workflow over the last 7d
+sntry metrics query gemini.cost_usd -f now-7d --stat sum --group-by workflow -o json -q
+```
+
+`--stat` accepts `sum avg count count_unique min max p50 p75 p90 p95 p99`.
+Sentry requires a metric's type and unit to query it; `sntry` auto-detects both
+from the metric name, so you normally only pass the name. Override with
+`--type` (`counter` / `gauge` / `distribution`) and `--unit` when needed. Use
+`--query` for additional attribute filters in Sentry search syntax
+(e.g. `--query 'workflow:checkout'`).
 
 ## Specification
 

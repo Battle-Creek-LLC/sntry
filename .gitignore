@@ -1,5 +1,6 @@
 /target
 /target-linux
+/tmp
 /tmp.confg
 *.swp
 *.swo

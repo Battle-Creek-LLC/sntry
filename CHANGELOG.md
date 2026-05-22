@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] — 2026-05-22
+
+### Added
+
+- `sntry metrics query <NAME>` for querying Sentry's **Trace Metrics**
+  (trace-connected Application Metrics) dataset — custom counters, gauges,
+  and distributions emitted via the SDK metrics API
+  (`sentry_sdk.metrics.count` / `.gauge` / `.distribution`). Wraps the
+  Discover events endpoint with `dataset=tracemetrics`. Supports `--stat`
+  (`sum`/`avg`/`count`/`count_unique`/`min`/`max`/`p50`..`p99`), repeatable
+  `--group-by`, an extra `--query` attribute filter, and the same time-range /
+  output ergonomics as `discover query`. Trace-metric aggregates require the
+  full `(name, type, unit)` triple — `sntry` auto-detects the metric's `--type`
+  and `--unit` from its name (both remain available as explicit overrides), so
+  the common case is just `sntry metrics query <NAME> --stat sum --group-by <attr>`.
+
 ## [0.1.1] — 2026-05-09
 
 ### Changed
