@@ -4,6 +4,7 @@ pub mod discover;
 pub mod events;
 pub mod issues;
 pub mod metrics;
+pub mod monitors;
 pub mod orgs;
 pub mod projects;
 pub mod releases;

@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] — 2026-07-28
+
+### Added
+
+- `sntry monitors {list,get,checkins,audit,create}` for Cron monitors.
+  - `list` renders slug / schedule / status / muted plus derived
+    `LAST-CHECKIN` / `NEXT-EXPECTED` columns (latest across environments);
+    `--status` filters on monitor status (`active`/`disabled`) or any
+    environment status (`ok`/`error`), `--env` filters server-side.
+  - `checkins <SLUG>` lists recent check-ins (id, status, started,
+    duration, environment).
+  - `audit` is a composed hygiene check, not a Sentry endpoint: flags
+    `disabled`, `failing`, `muted-while-failing`, `never-checked-in`,
+    `stale` (`--stale`, default `7d`), `no-checkin-margin`, and
+    `no-max-runtime`. `--fail-on-findings` exits 2 for CI use.
+  - `create <SLUG>` builds the monitor payload from flags (`--crontab` /
+    `--interval N UNIT`, `--timezone`, `--checkin-margin`, `--max-runtime`,
+    `--failure-threshold`, `--recovery-threshold`, `--owner`) or takes full
+    JSON via `--from-file` (`-` = stdin). Follows the `issues update`
+    convention: without `--yes` it prints the payload as a dry run and
+    creates nothing. Requires `-P/--sentry-project`.
+
 ## [0.2.0] — 2026-05-22
 
 ### Added
