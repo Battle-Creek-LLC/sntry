@@ -9,6 +9,11 @@ on:
         description: Existing tag to attach binaries to (e.g. v0.1.0)
         required: true
         type: string
+      publish_crate:
+        description: Publish the tag to crates.io instead of rebuilding binaries
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -16,6 +21,8 @@ permissions:
 jobs:
   upload-assets:
     name: ${{ matrix.target }}
+    # Skipped on a publish-only dispatch; the release assets already exist.
+    if: github.event_name == 'push' || !inputs.publish_crate
     permissions:
       contents: write
     strategy:
@@ -47,3 +54,23 @@ jobs:
           checksum: sha256
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || '' }}
+
+  publish-crate:
+    name: cargo publish
+    # Runs after binaries on a tag push, or alone via workflow_dispatch with
+    # publish_crate for a tag whose crate never made it to crates.io.
+    needs: [upload-assets]
+    if: >-
+      always() && (
+        (github.event_name == 'push' && needs.upload-assets.result == 'success') ||
+        (github.event_name == 'workflow_dispatch' && inputs.publish_crate)
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || '' }}
+      - name: cargo publish
+        run: cargo publish --locked
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
